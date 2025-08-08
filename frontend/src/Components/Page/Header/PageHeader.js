@@ -6,11 +6,9 @@ import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
 import AuthorSearchInputConnector from './AuthorSearchInputConnector';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
-import PageHeaderActionsMenuConnector from './PageHeaderActionsMenuConnector';
 import styles from './PageHeader.css';
 
 class PageHeader extends Component {
-
   //
   // Lifecycle
 
@@ -23,7 +21,10 @@ class PageHeader extends Component {
   }
 
   componentDidMount() {
-    this.props.bindShortcut(shortcuts.OPEN_KEYBOARD_SHORTCUTS_MODAL.key, this.onOpenKeyboardShortcutsModal);
+    this.props.bindShortcut(
+      shortcuts.OPEN_KEYBOARD_SHORTCUTS_MODAL.key,
+      this.onOpenKeyboardShortcutsModal
+    );
   }
 
   //
@@ -44,17 +45,12 @@ class PageHeader extends Component {
   // Render
 
   render() {
-    const {
-      onSidebarToggle
-    } = this.props;
+    const { onSidebarToggle } = this.props;
 
     return (
       <div className={styles.header}>
         <div className={styles.logoContainer}>
-          <Link
-            className={styles.logoLink}
-            to={'/'}
-          >
+          <Link className={styles.logoLink} to={'/'}>
             <img
               className={styles.logo}
               src={`${window.Readarr.urlBase}/Content/Images/logo.svg`}
@@ -72,19 +68,6 @@ class PageHeader extends Component {
         </div>
 
         <AuthorSearchInputConnector />
-
-        <div className={styles.right}>
-          <IconButton
-            className={styles.donate}
-            name={icons.HEART}
-            aria-label="Donate"
-            to="https://opencollective.com/readarr"
-            size={14}
-          />
-          <PageHeaderActionsMenuConnector
-            onKeyboardShortcutsPress={this.onOpenKeyboardShortcutsModal}
-          />
-        </div>
 
         <KeyboardShortcutsModal
           isOpen={this.state.isKeyboardShortcutsModalOpen}

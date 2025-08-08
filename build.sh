@@ -7,6 +7,13 @@ testPackageFolder='_tests'
 #Artifact variables
 artifactsFolder="_artifacts";
 
+TarPackage()
+{
+    local folder="$1"
+    local tarname="$2"
+    (cd "$(dirname "$folder")" && tar -czvf "$tarname" "$(basename "$folder")")
+}
+
 ProgressStart()
 {
     echo "Start '$1'"
@@ -29,20 +36,19 @@ UpdateVersionNumber()
 
 EnableExtraPlatformsInSDK()
 {
-    SDK_PATH=$(dotnet --list-sdks | grep -P '6\.\d\.\d+' | head -1 | sed 's/\(6\.[0-9]*\.[0-9]*\).*\[\(.*\)\]/\2\/\1/g')
     BUNDLEDVERSIONS="${SDK_PATH}/Microsoft.NETCoreSdk.BundledVersions.props"
-    if grep -q freebsd-x64 $BUNDLEDVERSIONS; then
+    if grep -q freebsd-x64 "$BUNDLEDVERSIONS"; then
         echo "Extra platforms already enabled"
     else
         echo "Enabling extra platform support"
-        sed -i.ORI 's/osx-x64/osx-x64;freebsd-x64;linux-x86/' $BUNDLEDVERSIONS
+        sed -i.ORI 's/osx-x64/osx-x64;freebsd-x64/' "$BUNDLEDVERSIONS"
     fi
 }
 
 EnableExtraPlatforms()
 {
     if grep -qv freebsd-x64 src/Directory.Build.props; then
-        sed -i'' -e "s^<RuntimeIdentifiers>\(.*\)</RuntimeIdentifiers>^<RuntimeIdentifiers>\1;freebsd-x64;linux-x86</RuntimeIdentifiers>^g" src/Directory.Build.props
+        sed -i'' -e "s^<RuntimeIdentifiers>\(.*\)</RuntimeIdentifiers>^<RuntimeIdentifiers>\1;freebsd-x64</RuntimeIdentifiers>^g" src/Directory.Build.props
     fi
 }
 
@@ -141,6 +147,8 @@ PackageLinux()
         cp $folder/libMonoPosixHelper.* $folder/Readarr.Update
     fi
 
+    TarPackage "$folder" "Readarr.develop.$READARRVERSION-${runtime}.tar.gz"
+
     ProgressEnd "Creating $runtime Package for $framework"
 }
 
@@ -148,7 +156,7 @@ PackageMacOS()
 {
     local framework="$1"
     local runtime="$2"
-    
+
     ProgressStart "Creating MacOS Package for $framework $runtime"
 
     local folder=$artifactsFolder/$runtime/$framework/Readarr
@@ -176,7 +184,7 @@ PackageMacOSApp()
 {
     local framework="$1"
     local runtime="$2"
-    
+
     ProgressStart "Creating macOS App Package for $framework $runtime"
 
     local folder="$artifactsFolder/$runtime-app/$framework"
@@ -203,9 +211,9 @@ PackageWindows()
     ProgressStart "Creating $runtime Package for $framework"
 
     local folder=$artifactsFolder/$runtime/$framework/Readarr
-    
+
     PackageFiles "$folder" "$framework" "$runtime"
-    cp -r $outputFolder/$framework-windows/$runtime/publish/* $folder
+    cp -r $outputFolder/$framework/$runtime/publish/* $folder
 
     echo "Removing Readarr.Mono"
     rm -f $folder/Readarr.Mono.*
@@ -244,20 +252,20 @@ BuildInstaller()
 {
     local framework="$1"
     local runtime="$2"
-    
+
     ./_inno/ISCC.exe distribution/windows/setup/readarr.iss "//DFramework=$framework" "//DRuntime=$runtime"
 }
 
 InstallInno()
 {
     ProgressStart "Installing portable Inno Setup"
-    
+
     rm -rf _inno
     curl -s --output innosetup.exe "https://files.jrsoftware.org/is/6/innosetup-${INNOVERSION:-6.2.0}.exe"
     mkdir _inno
     ./innosetup.exe //portable=1 //silent //currentuser //dir=.\\_inno
     rm innosetup.exe
-    
+
     ProgressEnd "Installed portable Inno Setup"
 }
 
