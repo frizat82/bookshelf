@@ -1,7 +1,5 @@
 using FluentAssertions;
 using NUnit.Framework;
-using NzbDrone.Common.Cloud;
-using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Test.Framework;
@@ -16,11 +14,7 @@ namespace NzbDrone.Core.Test.MetadataSource
         {
             Mocker.GetMock<IConfigService>()
                 .Setup(s => s.MetadataSource)
-                .Returns("");
-
-            Mocker.GetMock<IReadarrCloudRequestBuilder>()
-                .Setup(s => s.Metadata)
-                .Returns(new HttpRequestBuilder("https://api.bookinfo.pro/{route}").CreateFactory());
+                .Returns("https://api.bookinfo.pro");
         }
 
         private void WithCustomProvider()
