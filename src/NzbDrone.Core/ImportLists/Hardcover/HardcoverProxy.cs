@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -94,6 +95,7 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 .KeepAlive()
                 .Build();
 
+            request.RequestTimeout = TimeSpan.FromSeconds(300);
             request.SetContent(query);
             return request;
         }
