@@ -298,8 +298,8 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
             var result = Subject.FilterBooks(author, 1);
 
             // Assert - Should return the filtered books without crashing
-            Assert.NotNull(result);
-            Assert.IsInstanceOf<List<Book>>(result);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result, Is.InstanceOf<List<Book>>());
         }
 
         [Test]
@@ -354,8 +354,8 @@ namespace NzbDrone.Core.Test.Profiles.Metadata
             var result = Subject.FilterBooks(author, 1);
 
             // Assert - Should return the filtered books without crashing
-            Assert.NotNull(result);
-            Assert.IsInstanceOf<List<Book>>(result);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result, Is.InstanceOf<List<Book>>());
         }
     }
 }

@@ -1,11 +1,12 @@
 using System.Linq;
+using FluentValidation;
 using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class AuthorPathValidator : PropertyValidator
+    public class AuthorPathValidator : PropertyValidator<object, string>
     {
         private readonly IAuthorService _authorService;
 
@@ -14,21 +15,23 @@ namespace NzbDrone.Core.Validation.Paths
             _authorService = authorService;
         }
 
-        protected override string GetDefaultMessageTemplate() => "Path '{path}' is already configured for another author";
+        public override string Name => "AuthorPathValidator";
 
-        protected override bool IsValid(PropertyValidatorContext context)
+        protected override string GetDefaultMessageTemplate(string errorCode) => "Path '{path}' is already configured for another author";
+
+        public override bool IsValid(ValidationContext<object> context, string value)
         {
-            if (context.PropertyValue == null)
+            if (value == null)
             {
                 return true;
             }
 
-            context.MessageFormatter.AppendArgument("path", context.PropertyValue.ToString());
+            context.MessageFormatter.AppendArgument("path", value);
 
-            dynamic instance = context.ParentContext.InstanceToValidate;
+            dynamic instance = context.InstanceToValidate;
             var instanceId = (int)instance.Id;
 
-            return !_authorService.AllAuthorPaths().Any(s => s.Value.PathEquals(context.PropertyValue.ToString()) && s.Key != instanceId);
+            return !_authorService.AllAuthorPaths().Any(s => s.Value.PathEquals(value) && s.Key != instanceId);
         }
     }
 }

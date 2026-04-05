@@ -1,12 +1,13 @@
 ﻿using System.IO;
 using System.Text.RegularExpressions;
+using FluentValidation;
 using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class MappedNetworkDriveValidator : PropertyValidator
+    public class MappedNetworkDriveValidator : PropertyValidator<object, string>
     {
         private readonly IRuntimeInfo _runtimeInfo;
         private readonly IDiskProvider _diskProvider;
@@ -19,11 +20,13 @@ namespace NzbDrone.Core.Validation.Paths
             _diskProvider = diskProvider;
         }
 
-        protected override string GetDefaultMessageTemplate() => "Mapped Network Drive and Windows Service";
+        public override string Name => "MappedNetworkDriveValidator";
 
-        protected override bool IsValid(PropertyValidatorContext context)
+        protected override string GetDefaultMessageTemplate(string errorCode) => "Mapped Network Drive and Windows Service";
+
+        public override bool IsValid(ValidationContext<object> context, string value)
         {
-            if (context.PropertyValue == null)
+            if (value == null)
             {
                 return false;
             }
@@ -38,14 +41,12 @@ namespace NzbDrone.Core.Validation.Paths
                 return true;
             }
 
-            var path = context.PropertyValue.ToString();
-
-            if (!DriveRegex.IsMatch(path))
+            if (!DriveRegex.IsMatch(value))
             {
                 return true;
             }
 
-            var mount = _diskProvider.GetMount(path);
+            var mount = _diskProvider.GetMount(value);
 
             return mount is not { DriveType: DriveType.Network };
         }
