@@ -176,7 +176,7 @@ namespace NzbDrone.Core.MediaFiles
             }
             catch (Exception ex)
             {
-                if (ex is CorruptFileException)
+                if (ex is CorruptFileException or UnsupportedFormatException)
                 {
                     Logger.Warn(ex, $"Tag reading failed for {path}.  File is corrupt");
                 }
