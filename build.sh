@@ -90,7 +90,7 @@ Build()
 YarnInstall()
 {
     ProgressStart 'npm install'
-    npm install --network-timeout 120000
+    npm install
     ProgressEnd 'npm install'
 }
 
