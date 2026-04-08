@@ -27,6 +27,11 @@ namespace NzbDrone.Core.Instrumentation
 
         public void Register()
         {
+            if (LogManager.Configuration == null)
+            {
+                return;
+            }
+
             var target = new SlowRunningAsyncTargetWrapper(this) { TimeToSleepBetweenBatches = 500 };
 
             Rule = new LoggingRule("*", LogLevel.Info, target);
