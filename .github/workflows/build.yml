@@ -17,7 +17,7 @@ on:
       - "src/Readarr.Api.*/openapi.json"
 
 env:
-  DOTNET_VERSION: "6.0.427"
+  DOTNET_VERSION: "9.0.300"
   READARR_VERSION: 0.4.20
   OUTPUT_FOLDER: ./_output
   ARTIFACTS_FOLDER: ./_artifacts
@@ -55,7 +55,7 @@ jobs:
           path: |
             _cache/node
             node_modules
-          key: node-${{ runner.os }}-${{ hashFiles('package.json', 'yarn.lock') }}
+          key: node-${{ runner.os }}-${{ hashFiles('package.json', 'package-lock.json') }}
           restore-keys: |
             node-${{ runner.os }}-
 
@@ -72,9 +72,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _cache/webpack
-          key: webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
+          key: webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'package-lock.json') }}
           restore-keys: |
-            webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
+            webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'package-lock.json') }}
             webpack-${{ runner.os }}-
 
       - name: Build
@@ -86,7 +86,7 @@ jobs:
       - name: Prepare tests
         run: |
           mkdir -p _tests/bin
-          cp _output/net6.0/linux-x64/publish/Readarr _tests/bin/
+          cp _output/net9.0/linux-x64/publish/Readarr _tests/bin/
           chmod +x _tests/bin/Readarr
           find _tests -name "Readarr.Test.Dummy" -exec chmod a+x {} \;
 
