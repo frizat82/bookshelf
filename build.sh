@@ -97,7 +97,7 @@ YarnInstall()
 RunWebpack()
 {
     ProgressStart 'Running webpack'
-    npm run build --env production
+    npm run build -- --env production
     ProgressEnd 'Running webpack'
 }
 
