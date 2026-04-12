@@ -58,13 +58,13 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 return Enumerable.Empty<JToken>();
             }
 
-            // GraphQL shape: data.me[].lists[].list_books[].book
             var me = root["data"]?["me"];
             if (me != null && me.Type == JTokenType.Array)
             {
                 var books = new List<JToken>();
                 foreach (var meItem in me.Children())
                 {
+                    // GraphQL shape: data.me[].lists[].list_books[].book
                     var lists = meItem["lists"];
                     if (lists != null && lists.Type == JTokenType.Array)
                     {
@@ -81,6 +81,20 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                                         books.Add(book);
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // GraphQL shape: data.me[].user_books[].book (status-based)
+                    var userBooks = meItem["user_books"];
+                    if (userBooks != null && userBooks.Type == JTokenType.Array)
+                    {
+                        foreach (var userBook in userBooks.Children())
+                        {
+                            var book = userBook["book"];
+                            if (book != null)
+                            {
+                                books.Add(book);
                             }
                         }
                     }

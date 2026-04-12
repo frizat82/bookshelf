@@ -51,11 +51,20 @@ namespace NzbDrone.Core.ImportLists.Hardcover
             }
 
             var payload = JsonConvert.DeserializeObject<HardcoverGraphQlResponse>(response.Content);
-            var lists = payload?.GetLists() ?? new List<HardcoverListResource>();
+            var customLists = payload?.GetLists() ?? new List<HardcoverListResource>();
 
-            _logger.Debug("Hardcover: Found {0} lists", lists.Count);
+            _logger.Debug("Hardcover: Found {0} custom lists", customLists.Count);
 
-            return lists;
+            // Prepend built-in status-based shelves
+            var statusLists = new List<HardcoverListResource>
+            {
+                new () { Id = "status:1", Name = "Want to Read" },
+                new () { Id = "status:2", Name = "Currently Reading" },
+                new () { Id = "status:3", Name = "Read" },
+                new () { Id = "status:4", Name = "Did Not Finish" },
+            };
+
+            return statusLists.Concat(customLists).ToList();
         }
 
         public ValidationFailure Test(HardcoverImportSettings settings)

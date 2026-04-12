@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using NLog;
 using NzbDrone.Common.Http;
@@ -29,18 +30,44 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
             Logger.Info("Hardcover: Fetching books for lists '{0}'", Settings.ListIds);
 
-            // Query to fetch selected lists with their books and author info
-            var graphQlBody = JsonSerializer.Serialize(new
-            {
-                query = @"
-                    query ListBooks($slugs: [String!]!) { me { lists(where: { slug: { _in: $slugs } } ) { slug name list_books { book { id title contributions { author { id name } } } } } } }
-                ",
-                variables = new
-                {
-                    slugs = Settings.ListIds
-                }
-            });
+            var statusIds = Settings.ListIds
+                .Where(id => id.StartsWith("status:", System.StringComparison.OrdinalIgnoreCase))
+                .Select(id => int.Parse(id.Substring("status:".Length)))
+                .ToList();
 
+            var listSlugs = Settings.ListIds
+                .Where(id => !id.StartsWith("status:", System.StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (statusIds.Any())
+            {
+                var body = JsonSerializer.Serialize(new
+                {
+                    query = @"
+                        query UserBooks($statuses: [Int!]!) { me { user_books(where: { status_id: { _in: $statuses } }) { book { id title contributions { author { id name } } } } } }
+                    ",
+                    variables = new { statuses = statusIds }
+                });
+
+                yield return new ImportListRequest(BuildRequest(apiKey, body));
+            }
+
+            if (listSlugs.Any())
+            {
+                var body = JsonSerializer.Serialize(new
+                {
+                    query = @"
+                        query ListBooks($slugs: [String!]!) { me { lists(where: { slug: { _in: $slugs } } ) { slug name list_books { book { id title contributions { author { id name } } } } } } }
+                    ",
+                    variables = new { slugs = listSlugs }
+                });
+
+                yield return new ImportListRequest(BuildRequest(apiKey, body));
+            }
+        }
+
+        private HttpRequest BuildRequest(string apiKey, string body)
+        {
             var request = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
                 .Post()
                 .Accept(HttpAccept.Json)
@@ -51,9 +78,8 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 .KeepAlive()
                 .Build();
 
-            request.SetContent(graphQlBody);
-
-            yield return new ImportListRequest(request);
+            request.SetContent(body);
+            return request;
         }
 
         private string NormalizeApiKey(string apiKey)
