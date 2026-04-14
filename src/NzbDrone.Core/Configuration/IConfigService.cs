@@ -23,6 +23,7 @@ namespace NzbDrone.Core.Configuration
 
         //Media Management
         bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }
+        string CwaIngestFolder { get; set; }
         string RecycleBin { get; set; }
         int RecycleBinCleanupDays { get; set; }
         ProperDownloadTypes DownloadPropersAndRepacks { get; set; }

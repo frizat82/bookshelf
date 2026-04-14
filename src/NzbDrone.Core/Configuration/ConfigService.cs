@@ -85,6 +85,12 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("AutoUnmonitorPreviouslyDownloadedBooks", value); }
         }
 
+        public string CwaIngestFolder
+        {
+            get { return GetValue("CwaIngestFolder", string.Empty); }
+            set { SetValue("CwaIngestFolder", value); }
+        }
+
         public int Retention
         {
             get { return GetValueInt("Retention", 0); }

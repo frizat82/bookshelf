@@ -21,6 +21,10 @@ namespace Readarr.Api.V1.Config
                                            RootFolderValidator rootFolderValidator)
             : base(configService)
         {
+            SharedValidator.RuleFor(c => c.CwaIngestFolder).IsValidPath()
+                                                           .SetValidator(folderWritableValidator)
+                                                           .SetValidator(pathExistsValidator)
+                                                           .When(c => !string.IsNullOrWhiteSpace(c.CwaIngestFolder));
             SharedValidator.RuleFor(c => c.RecycleBin).IsValidPath()
                                                       .SetValidator(folderWritableValidator)
                                                       .SetValidator(rootFolderValidator)

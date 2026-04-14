@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -28,6 +30,9 @@ namespace NzbDrone.Core.Download
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
+        private readonly IConfigService _configService;
+        private readonly IDiskProvider _diskProvider;
+        private readonly IDiskTransferService _diskTransferService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -35,6 +40,9 @@ namespace NzbDrone.Core.Download
                                         IProvideImportItemService provideImportItemService,
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
+                                        IConfigService configService,
+                                        IDiskProvider diskProvider,
+                                        IDiskTransferService diskTransferService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -42,6 +50,9 @@ namespace NzbDrone.Core.Download
             _provideImportItemService = provideImportItemService;
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
+            _configService = configService;
+            _diskProvider = diskProvider;
+            _diskTransferService = diskTransferService;
             _logger = logger;
         }
 
@@ -88,6 +99,33 @@ namespace NzbDrone.Core.Download
             trackedDownload.State = TrackedDownloadState.Importing;
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
+
+            var cwaIngestFolder = _configService.CwaIngestFolder;
+            if (!string.IsNullOrWhiteSpace(cwaIngestFolder))
+            {
+                _logger.Debug("CWA: Moving download '{0}' to ingest folder '{1}'", outputPath, cwaIngestFolder);
+
+                if (_diskProvider.FileExists(outputPath))
+                {
+                    var dest = Path.Combine(cwaIngestFolder, Path.GetFileName(outputPath));
+                    _diskTransferService.TransferFile(outputPath, dest, TransferMode.Move, overwrite: true);
+                    _logger.Info("CWA: Moved '{0}' to ingest folder", Path.GetFileName(outputPath));
+                }
+                else if (_diskProvider.FolderExists(outputPath))
+                {
+                    foreach (var file in _diskProvider.GetFiles(outputPath, true))
+                    {
+                        var dest = Path.Combine(cwaIngestFolder, Path.GetFileName(file));
+                        _diskTransferService.TransferFile(file, dest, TransferMode.Move, overwrite: true);
+                        _logger.Info("CWA: Moved '{0}' to ingest folder", Path.GetFileName(file));
+                    }
+                }
+
+                trackedDownload.State = TrackedDownloadState.Imported;
+                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteBook?.Author.Id ?? 0));
+                return;
+            }
+
             var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem);
 
             if (importResults.Empty())

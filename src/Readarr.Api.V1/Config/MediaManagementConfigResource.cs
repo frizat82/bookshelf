@@ -8,6 +8,7 @@ namespace Readarr.Api.V1.Config
     public class MediaManagementConfigResource : RestResource
     {
         public bool AutoUnmonitorPreviouslyDownloadedBooks { get; set; }
+        public string CwaIngestFolder { get; set; }
         public string RecycleBin { get; set; }
         public int RecycleBinCleanupDays { get; set; }
         public ProperDownloadTypes DownloadPropersAndRepacks { get; set; }
@@ -36,6 +37,7 @@ namespace Readarr.Api.V1.Config
             return new MediaManagementConfigResource
             {
                 AutoUnmonitorPreviouslyDownloadedBooks = model.AutoUnmonitorPreviouslyDownloadedBooks,
+                CwaIngestFolder = model.CwaIngestFolder,
                 RecycleBin = model.RecycleBin,
                 RecycleBinCleanupDays = model.RecycleBinCleanupDays,
                 DownloadPropersAndRepacks = model.DownloadPropersAndRepacks,
