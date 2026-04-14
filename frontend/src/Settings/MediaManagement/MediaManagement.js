@@ -235,6 +235,24 @@ class MediaManagement extends Component {
                 }
 
                 <FieldSet
+                  legend="Calibre-Web Automated"
+                >
+                  <FormGroup size={sizes.MEDIUM}>
+                    <FormLabel>
+                      CWA Ingest Folder
+                    </FormLabel>
+
+                    <FormInputGroup
+                      type={inputTypes.PATH}
+                      name="cwaIngestFolder"
+                      helpText="When set, completed downloads are moved here for Calibre-Web Automated to import instead of Readarr importing them directly. Leave blank to use normal Readarr import."
+                      onChange={onInputChange}
+                      {...settings.cwaIngestFolder}
+                    />
+                  </FormGroup>
+                </FieldSet>
+
+                <FieldSet
                   legend={translate('FileManagement')}
                 >
                   <FormGroup size={sizes.MEDIUM}>
