@@ -69,7 +69,7 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
             {
                 foreach (var dir in userGroup.Directories)
                 {
-                    foreach (var transfer in dir.Files.Where(t => t.Direction == "Download"))
+                    foreach (var transfer in dir.Files.Where(t => t.Direction == "Download" && IsBookFile(t.Filename)))
                     {
                         var item = new DownloadClientItem
                         {
@@ -152,12 +152,40 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
             }
         }
 
-        private static DownloadItemStatus MapStatus(string state) => state switch
+        private static readonly HashSet<string> BookExtensions = new (StringComparer.OrdinalIgnoreCase)
         {
-            "Requested" or "Initializing" => DownloadItemStatus.Queued,
-            "InProgress" => DownloadItemStatus.Downloading,
-            "Completed" => DownloadItemStatus.Completed,
-            _ => DownloadItemStatus.Failed,
+            ".epub", ".mobi", ".azw3", ".pdf"
         };
+
+        private static bool IsBookFile(string filename)
+        {
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                return false;
+            }
+
+            var ext = Path.GetExtension(filename.Replace('\\', '/'));
+            return BookExtensions.Contains(ext);
+        }
+
+        private static DownloadItemStatus MapStatus(string state)
+        {
+            if (state == null)
+            {
+                return DownloadItemStatus.Failed;
+            }
+
+            if (state.StartsWith("Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                return DownloadItemStatus.Completed;
+            }
+
+            return state switch
+            {
+                "Requested" or "Initializing" => DownloadItemStatus.Queued,
+                "InProgress" => DownloadItemStatus.Downloading,
+                _ => DownloadItemStatus.Failed,
+            };
+        }
     }
 }
