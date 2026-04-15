@@ -62,6 +62,9 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
             var allTransfers = _proxy.GetTransfers(Settings);
             var items = new List<DownloadClientItem>();
 
+            var hasCompleted = allTransfers.Any(u => u.Directories.Any(d => d.Files.Any(f => f.Direction == "Download" && f.State == "Completed")));
+            var downloadDir = hasCompleted ? _proxy.GetDownloadDirectory(Settings) : null;
+
             foreach (var userGroup in allTransfers)
             {
                 foreach (var dir in userGroup.Directories)
@@ -87,14 +90,12 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                             item.RemainingTime = TimeSpan.FromSeconds(transfer.RemainingSeconds.Value);
                         }
 
-                        if (transfer.State == "Completed")
+                        if (transfer.State == "Completed" && !string.IsNullOrWhiteSpace(downloadDir))
                         {
-                            var downloadDir = _proxy.GetDownloadDirectory(Settings);
-                            if (!string.IsNullOrWhiteSpace(downloadDir))
-                            {
-                                var filename = transfer.Filename.Replace('\\', '/').Split('/').Last();
-                                item.OutputPath = new OsPath(Path.Combine(downloadDir, userGroup.Username, filename));
-                            }
+                            var relativePath = transfer.Filename
+                                .Replace('\\', Path.DirectorySeparatorChar)
+                                .TrimStart(Path.DirectorySeparatorChar);
+                            item.OutputPath = new OsPath(Path.Combine(downloadDir, userGroup.Username, relativePath));
                         }
 
                         if (item.Status == DownloadItemStatus.Failed)
