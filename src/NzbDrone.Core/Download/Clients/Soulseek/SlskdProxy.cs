@@ -59,6 +59,12 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
         public long Size { get; set; }
     }
 
+    public class SlskdEnqueueResponse
+    {
+        [JsonProperty("enqueued")]
+        public List<SlskdTransfer> Enqueued { get; set; } = new ();
+    }
+
     public class SlskdOptions
     {
         [JsonProperty("directories")]
@@ -105,8 +111,8 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
             req.SetContent(JsonConvert.SerializeObject(body));
 
             var response = _httpClient.Execute(req);
-            var transfers = JsonConvert.DeserializeObject<List<SlskdTransfer>>(response.Content);
-            return (transfers?.Count > 0) ? $"{username}/{transfers[0].Id}" : string.Empty;
+            var result = JsonConvert.DeserializeObject<SlskdEnqueueResponse>(response.Content);
+            return (result?.Enqueued?.Count > 0) ? $"{username}/{result.Enqueued[0].Id}" : string.Empty;
         }
 
         public List<SlskdTransferResponse> GetTransfers(SlskdDownloadClientSettings settings)
