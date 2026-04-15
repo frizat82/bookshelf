@@ -25,7 +25,7 @@ namespace NzbDrone.Core.Indexers.Soulseek
             SearchTimeout = 15;
             FileLimit = 10000;
             ResponseLimit = 500;
-            AllowedFormats = new List<string> { "epub", "mobi", "azw3", "pdf", "djvu" };
+            AllowedFormats = new List<string> { "epub", "mobi", "azw3", "pdf" };
             AuthorMinScore = 80;
             TitleMinScore = 75;
         }

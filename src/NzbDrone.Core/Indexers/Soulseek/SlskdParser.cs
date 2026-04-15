@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Indexers.Soulseek
 {
     public static class SlskdParser
     {
-        private static readonly string[] FormatPreference = { "epub", "mobi", "azw3", "pdf", "djvu" };
+        private static readonly string[] FormatPreference = { "epub", "mobi", "azw3", "pdf" };
         private static readonly Regex NonAlpha = new Regex(@"[^\w\s]", RegexOptions.Compiled);
 
         public static List<ReleaseInfo> ParseResults(
