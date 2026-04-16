@@ -117,7 +117,7 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
 
         public List<SlskdTransferResponse> GetTransfers(SlskdDownloadClientSettings settings)
         {
-            var req = BuildRequest(settings, "/api/v0/transfers/downloads?includeRemoved=true");
+            var req = BuildRequest(settings, "/api/v0/transfers/downloads?includeRemoved=false");
             var response = _httpClient.Get(req);
             return JsonConvert.DeserializeObject<List<SlskdTransferResponse>>(response.Content)
                    ?? new List<SlskdTransferResponse>();
