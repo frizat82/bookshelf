@@ -13,6 +13,8 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Notifications;
+using NzbDrone.Core.Notifications.CalibreWebAutomated;
 
 namespace NzbDrone.Core.Download
 {
@@ -31,6 +33,7 @@ namespace NzbDrone.Core.Download
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
         private readonly IConfigService _configService;
+        private readonly INotificationFactory _notificationFactory;
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
         private readonly Logger _logger;
@@ -41,6 +44,7 @@ namespace NzbDrone.Core.Download
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
                                         IConfigService configService,
+                                        INotificationFactory notificationFactory,
                                         IDiskProvider diskProvider,
                                         IDiskTransferService diskTransferService,
                                         Logger logger)
@@ -51,9 +55,24 @@ namespace NzbDrone.Core.Download
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
             _configService = configService;
+            _notificationFactory = notificationFactory;
             _diskProvider = diskProvider;
             _diskTransferService = diskTransferService;
             _logger = logger;
+        }
+
+        private string GetCwaIngestFolder()
+        {
+            // Prefer the ingest folder configured on the CWA notification over the legacy global config.
+            var cwaDef = _notificationFactory.All()
+                .FirstOrDefault(d => d.Implementation == nameof(CalibreWebAutomated) && d.Enable);
+            if (cwaDef?.Settings is CalibreWebAutomatedSettings cwaSettings &&
+                !string.IsNullOrWhiteSpace(cwaSettings.IngestFolder))
+            {
+                return cwaSettings.IngestFolder;
+            }
+
+            return _configService.CwaIngestFolder;
         }
 
         public void Check(TrackedDownload trackedDownload)
@@ -100,7 +119,7 @@ namespace NzbDrone.Core.Download
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
 
-            var cwaIngestFolder = _configService.CwaIngestFolder;
+            var cwaIngestFolder = GetCwaIngestFolder();
             if (!string.IsNullOrWhiteSpace(cwaIngestFolder))
             {
                 _logger.Debug("CWA: Moving download '{0}' to ingest folder '{1}'", outputPath, cwaIngestFolder);

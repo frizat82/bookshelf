@@ -229,7 +229,19 @@ namespace NzbDrone.Core.MediaFiles
                 if (!ShouldIgnoreChange(path, ignored))
                 {
                     _logger.Trace("Actioning change to {0}", path);
-                    toScan.Add(rootFolder);
+
+                    // Scope the rescan to the immediate author subfolder rather than the
+                    // entire root — prevents a single file change from rescanning all books.
+                    var cleanRoot = rootFolder.CleanFilePathBasic().TrimEnd('/', '\\');
+                    var relative = path.StartsWith(cleanRoot, StringComparison.OrdinalIgnoreCase)
+                        ? path.Substring(cleanRoot.Length).TrimStart('/', '\\')
+                        : null;
+                    var topLevel = relative?.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    var scanTarget = (topLevel != null)
+                        ? Path.Combine(rootFolder, topLevel)
+                        : rootFolder;
+
+                    toScan.Add(scanTarget);
                 }
                 else
                 {

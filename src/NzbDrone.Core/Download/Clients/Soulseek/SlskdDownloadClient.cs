@@ -62,13 +62,20 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
             var allTransfers = _proxy.GetTransfers(Settings);
             var items = new List<DownloadClientItem>();
 
-            var hasCompleted = allTransfers.Any(u => u.Directories.Any(d => d.Files.Any(f => f.Direction == "Download" && f.State == "Completed")));
+            var hasCompleted = allTransfers.Any(u => u.Directories.Any(d => d.Files.Any(f => f.Direction == "Download" && f.State != null && f.State.StartsWith("Completed"))));
             var downloadDir = hasCompleted ? _proxy.GetDownloadDirectory(Settings) : null;
 
             foreach (var userGroup in allTransfers)
             {
                 foreach (var dir in userGroup.Directories)
                 {
+                    // slskd stores files at {downloadDir}/{lastDirComponent}/{filename}
+                    // The full remote path is NOT preserved — only the immediate parent directory is.
+                    var lastDirComponent = dir.Directory?
+                        .Replace('\\', '/')
+                        .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                        .LastOrDefault();
+
                     foreach (var transfer in dir.Files.Where(t => t.Direction == "Download" && IsBookFile(t.Filename)))
                     {
                         var item = new DownloadClientItem
@@ -80,9 +87,10 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                             TotalSize = transfer.Size,
                             RemainingSize = transfer.Size - transfer.BytesTransferred,
                             Status = MapStatus(transfer.State),
-                            CanMoveFiles = transfer.State == "Completed",
-                            CanBeRemoved = transfer.State is "Completed" or "Cancelled" or "Errored"
-                                                                          or "TimedOut" or "Rejected" or "Aborted",
+                            CanMoveFiles = transfer.State != null && transfer.State.StartsWith("Completed"),
+                            CanBeRemoved = transfer.State != null && (transfer.State.StartsWith("Completed") || transfer.State.StartsWith("Cancelled")
+                                                                      || transfer.State.StartsWith("Errored") || transfer.State.StartsWith("TimedOut")
+                                                                      || transfer.State.StartsWith("Rejected") || transfer.State.StartsWith("Aborted")),
                         };
 
                         if (transfer.RemainingSeconds.HasValue)
@@ -90,12 +98,12 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                             item.RemainingTime = TimeSpan.FromSeconds(transfer.RemainingSeconds.Value);
                         }
 
-                        if (transfer.State == "Completed" && !string.IsNullOrWhiteSpace(downloadDir))
+                        if (transfer.State != null && transfer.State.StartsWith("Completed") && !string.IsNullOrWhiteSpace(downloadDir))
                         {
-                            var relativePath = transfer.Filename
-                                .Replace('\\', Path.DirectorySeparatorChar)
-                                .TrimStart(Path.DirectorySeparatorChar);
-                            item.OutputPath = new OsPath(Path.Combine(downloadDir, userGroup.Username, relativePath));
+                            var filename = Path.GetFileName(transfer.Filename.Replace('\\', '/'));
+                            item.OutputPath = lastDirComponent != null
+                                ? new OsPath(Path.Combine(downloadDir, lastDirComponent, filename))
+                                : new OsPath(Path.Combine(downloadDir, filename));
                         }
 
                         if (item.Status == DownloadItemStatus.Failed)

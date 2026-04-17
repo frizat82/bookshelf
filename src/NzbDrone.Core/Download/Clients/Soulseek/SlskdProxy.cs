@@ -46,6 +46,9 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
 
     public class SlskdTransferDirectory
     {
+        [JsonProperty("directory")]
+        public string Directory { get; set; }
+
         [JsonProperty("files")]
         public List<SlskdTransfer> Files { get; set; } = new ();
     }
@@ -63,6 +66,9 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
     {
         [JsonProperty("enqueued")]
         public List<SlskdTransfer> Enqueued { get; set; } = new ();
+
+        [JsonProperty("failed")]
+        public List<string> Failed { get; set; } = new ();
     }
 
     public class SlskdOptions
