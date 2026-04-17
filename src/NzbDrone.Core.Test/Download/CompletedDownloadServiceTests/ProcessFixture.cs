@@ -8,6 +8,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -56,6 +57,10 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Mocker.GetMock<IParsingService>()
                   .Setup(s => s.GetAuthor("Drone.S01E01.HDTV"))
                   .Returns(remoteBook.Author);
+
+            Mocker.GetMock<INotificationFactory>()
+                .Setup(s => s.All())
+                .Returns(new List<NotificationDefinition>());
         }
 
         private RemoteBook BuildRemoteBook()

@@ -12,6 +12,7 @@ using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -68,6 +69,10 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Mocker.GetMock<IProvideImportItemService>()
                 .Setup(s => s.ProvideImportItem(It.IsAny<DownloadClientItem>(), It.IsAny<DownloadClientItem>()))
                 .Returns<DownloadClientItem, DownloadClientItem>((i, p) => i);
+
+            Mocker.GetMock<INotificationFactory>()
+                .Setup(s => s.All())
+                .Returns(new List<Notifications.NotificationDefinition>());
         }
 
         private Book CreateBook(int id)
