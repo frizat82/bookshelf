@@ -176,10 +176,15 @@ namespace NzbDrone.Core.MediaFiles
 
             if (ex.GetType() == typeof(InternalBufferOverflowException))
             {
-                _logger.Warn(ex, "The file system watcher experienced an internal buffer overflow for: {0}", dw.Path);
+                _logger.Warn("File system watcher buffer overflow for: {0}. Events were lost but existing queued changes will still be processed.", dw.Path);
 
-                _changedPaths.TryAdd(dw.Path, dw.Path);
-                _scanDebouncer.Execute();
+                // Do NOT queue a full root-folder rescan here. The overflow means we missed
+                // some events, but queuing a scan of the entire library (7000+ books) for
+                // every overflow causes an endless rescan loop when many files change at once
+                // (e.g. CWA processing a batch of downloads). Individual change events that
+                // arrived before the overflow are already in _changedPaths and will be scoped
+                // to their author subfolders. The 24-hour scheduled rescan will catch anything
+                // that was truly missed.
             }
             else
             {
