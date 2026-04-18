@@ -233,20 +233,27 @@ namespace NzbDrone.Core.MediaFiles
 
                 if (!ShouldIgnoreChange(path, ignored))
                 {
-                    _logger.Trace("Actioning change to {0}", path);
-
                     // Scope the rescan to the immediate author subfolder rather than the
                     // entire root — prevents a single file change from rescanning all books.
+                    // When FileSystemWatcher fires a LastWrite event for the root directory
+                    // itself (e.g. when a subdirectory is created), topLevel is null and we
+                    // must NOT fall back to scanning the entire root folder.  Individual child
+                    // events will already be in _changedPaths for those actual changes.
                     var cleanRoot = rootFolder.CleanFilePathBasic().TrimEnd('/', '\\');
                     var relative = path.StartsWith(cleanRoot, StringComparison.OrdinalIgnoreCase)
                         ? path.Substring(cleanRoot.Length).TrimStart('/', '\\')
                         : null;
                     var topLevel = relative?.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                    var scanTarget = (topLevel != null)
-                        ? Path.Combine(rootFolder, topLevel)
-                        : rootFolder;
 
-                    toScan.Add(scanTarget);
+                    if (topLevel == null)
+                    {
+                        _logger.Trace("Skipping root-level change event for {0} (child events will handle it)", path);
+                    }
+                    else
+                    {
+                        _logger.Trace("Actioning change to {0}", path);
+                        toScan.Add(Path.Combine(rootFolder, topLevel));
+                    }
                 }
                 else
                 {
