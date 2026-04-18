@@ -302,7 +302,7 @@ namespace NzbDrone.Core.Books
             _eventAggregator.PublishEvent(new BookInfoRefreshedEvent(entity, newChildren, updateChildren, deleteChildren));
         }
 
-        private void Rescan(List<int> authorIds, bool isNew, CommandTrigger trigger, bool infoUpdated)
+        private void Rescan(List<int> authorIds, List<Author> authors, bool isNew, CommandTrigger trigger, bool infoUpdated)
         {
             var rescanAfterRefresh = _configService.RescanAfterRefresh;
             var shouldRescan = true;
@@ -330,9 +330,6 @@ namespace NzbDrone.Core.Books
 
             if (shouldRescan)
             {
-                // Scope the rescan to the specific author folders rather than all root folders
-                // to avoid rescanning the entire library on every author refresh.
-                var authors = _authorService.GetAuthors(authorIds);
                 var folders = authors
                     .Where(a => a.Path.IsNotNullOrWhiteSpace())
                     .Select(a => a.Path)
@@ -341,6 +338,7 @@ namespace NzbDrone.Core.Books
 
                 if (!folders.Any())
                 {
+                    _logger.Trace("No author paths resolved for rescan; falling back to all root folders");
                     folders = _rootFolderService.All().Select(x => x.Path).ToList();
                 }
 
@@ -371,7 +369,7 @@ namespace NzbDrone.Core.Books
                 }
             }
 
-            Rescan(authorIds, isNew, trigger, updated);
+            Rescan(authorIds, authors, isNew, trigger, updated);
         }
 
         public void Execute(BulkRefreshAuthorCommand message)
@@ -426,7 +424,7 @@ namespace NzbDrone.Core.Books
                     }
                 }
 
-                Rescan(authorIds, isNew, trigger, updated);
+                Rescan(authorIds, authors, isNew, trigger, updated);
             }
         }
     }

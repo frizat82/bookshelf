@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -33,9 +34,11 @@ namespace NzbDrone.Core.MediaFiles
     {
         private const int DEBOUNCE_TIMEOUT_SECONDS = 30;
 
+        private static readonly char[] PathSeparators = { '/', '\\' };
+
         private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileSystemWatchers = new ConcurrentDictionary<string, FileSystemWatcher>();
-        private readonly ConcurrentDictionary<string, int> _tempIgnoredPaths = new ConcurrentDictionary<string, int>();
-        private readonly ConcurrentDictionary<string, string> _changedPaths = new ConcurrentDictionary<string, string>();
+        private ConcurrentDictionary<string, int> _tempIgnoredPaths = new ConcurrentDictionary<string, int>();
+        private ConcurrentDictionary<string, string> _changedPaths = new ConcurrentDictionary<string, string>();
 
         private readonly IRootFolderService _rootFolderService;
         private readonly IManageCommandQueue _commandQueueManager;
@@ -174,7 +177,7 @@ namespace NzbDrone.Core.MediaFiles
             var ex = e.GetException();
             var dw = (FileSystemWatcher)sender;
 
-            if (ex.GetType() == typeof(InternalBufferOverflowException))
+            if (ex is InternalBufferOverflowException)
             {
                 _logger.Warn("File system watcher buffer overflow for: {0}. Events were lost but existing queued changes will still be processed.", dw.Path);
 
@@ -218,11 +221,10 @@ namespace NzbDrone.Core.MediaFiles
 
         private void ScanPending()
         {
-            var pairs = _changedPaths.ToArray();
-            _changedPaths.Clear();
-
-            var ignored = _tempIgnoredPaths.Keys.ToArray();
-            _tempIgnoredPaths.Clear();
+            // Swap out the dictionaries atomically to avoid a TOCTOU window where
+            // Watcher_Changed adds an entry after snapshot but before clear.
+            var pairs = Interlocked.Exchange(ref _changedPaths, new ConcurrentDictionary<string, string>());
+            var ignored = Interlocked.Exchange(ref _tempIgnoredPaths, new ConcurrentDictionary<string, int>()).Keys.ToArray();
 
             var toScan = new HashSet<string>();
 
@@ -233,21 +235,20 @@ namespace NzbDrone.Core.MediaFiles
 
                 if (!ShouldIgnoreChange(path, ignored))
                 {
-                    // Scope the rescan to the immediate author subfolder rather than the
-                    // entire root — prevents a single file change from rescanning all books.
-                    // When FileSystemWatcher fires a LastWrite event for the root directory
-                    // itself (e.g. when a subdirectory is created), topLevel is null and we
-                    // must NOT fall back to scanning the entire root folder.  Individual child
-                    // events will already be in _changedPaths for those actual changes.
-                    var cleanRoot = rootFolder.CleanFilePathBasic().TrimEnd('/', '\\');
+                    // Use manual string ops rather than IsParentPath/GetRelativePath — those
+                    // create DirectoryInfo objects and hit disk, too slow for a tight event loop.
+                    var cleanRoot = rootFolder.CleanFilePathBasic();
                     var relative = path.StartsWith(cleanRoot, StringComparison.OrdinalIgnoreCase)
                         ? path.Substring(cleanRoot.Length).TrimStart('/', '\\')
                         : null;
-                    var topLevel = relative?.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    var topLevel = relative?.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
 
                     if (topLevel == null)
                     {
-                        _logger.Trace("Skipping root-level change event for {0} (child events will handle it)", path);
+                        // Event is for the root directory itself (e.g. LastWrite when a child dir
+                        // is created). Don't fall back to a full root scan — child events for the
+                        // actual author subfolders are already in the snapshot.
+                        _logger.Trace("Skipping root-level change event for {0}", path);
                     }
                     else
                     {
