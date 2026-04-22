@@ -249,7 +249,7 @@ namespace NzbDrone.Core.MediaFiles
 
             var rootFolder = _rootFolderService.GetBestRootFolder(path);
 
-            _logger.Trace(rootFolder.ToJson());
+            _logger.Trace(rootFolder?.ToJson());
 
             if (rootFolder != null && rootFolder.IsCalibreLibrary && rootFolder.CalibreSettings != null)
             {

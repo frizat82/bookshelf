@@ -21,12 +21,7 @@ using NzbDrone.Core.RootFolders;
 
 namespace NzbDrone.Core.Books
 {
-    public interface IRefreshAuthorService
-    {
-    }
-
     public class RefreshAuthorService : RefreshEntityServiceBase<Author, Book>,
-        IRefreshAuthorService,
         IExecute<RefreshAuthorCommand>,
         IExecute<BulkRefreshAuthorCommand>
     {
