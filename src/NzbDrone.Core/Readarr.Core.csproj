@@ -19,7 +19,7 @@
     <PackageReference Include="Servarr.FluentMigrator.Runner.SQLite" />
     <PackageReference Include="Servarr.FluentMigrator.Runner.Postgres" />
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="MailKit" Version="4.16.0" />
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="NLog" />
     <PackageReference Include="NLog.Targets.Syslog" />
