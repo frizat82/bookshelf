@@ -158,7 +158,7 @@ namespace NzbDrone.Core.Books
         {
             _logger.Debug($"Updating foreign id for {local} to {remote}");
 
-            // We are moving from one metadata to another (will already have been poplated)
+            // We are moving from one metadata to another (will already have been populated)
             local.AuthorMetadataId = remote.Metadata.Value.Id;
             local.Metadata = remote.Metadata.Value;
 
@@ -304,6 +304,12 @@ namespace NzbDrone.Core.Books
 
         private void Rescan(List<int> authorIds, List<Author> authors, bool isNew, CommandTrigger trigger, bool infoUpdated)
         {
+            // Nothing to rescan if no authors were targeted
+            if (authorIds == null || !authorIds.Any())
+            {
+                return;
+            }
+
             var rescanAfterRefresh = _configService.RescanAfterRefresh;
             var shouldRescan = true;
 
@@ -338,10 +344,12 @@ namespace NzbDrone.Core.Books
 
                 if (!folders.Any())
                 {
-                    _logger.Trace("No author paths resolved for rescan; falling back to all root folders");
-                    folders = _rootFolderService.All().Select(x => x.Path).ToList();
+                    _logger.Warn("Skipping rescan: no paths resolved for the refreshed authors (authors may not have a path set yet)");
+                    return;
                 }
 
+                // Use Matched (not Known) so we only re-evaluate files already tracked in the
+                // database; a post-refresh rescan should not import brand-new unknowns.
                 _commandQueueManager.Push(new RescanFoldersCommand(folders, FilterFilesType.Matched, false, authorIds));
             }
         }
@@ -349,11 +357,15 @@ namespace NzbDrone.Core.Books
         private void RefreshSelectedAuthors(List<int> authorIds, bool isNew, CommandTrigger trigger)
         {
             var updated = false;
-            var authors = _authorService.GetAuthors(authorIds);
+            List<Author> authors;
             if (authorIds == null || !authorIds.Any())
             {
                 authors = _authorService.GetAllAuthors();
                 authorIds = authors.Select(x => x.Id).ToList();
+            }
+            else
+            {
+                authors = _authorService.GetAuthors(authorIds);
             }
 
             foreach (var author in authors)

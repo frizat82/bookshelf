@@ -37,7 +37,8 @@ namespace NzbDrone.Core.MediaFiles
         private static readonly char[] PathSeparators = { '/', '\\' };
 
         private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileSystemWatchers = new ConcurrentDictionary<string, FileSystemWatcher>();
-        private ConcurrentDictionary<string, int> _tempIgnoredPaths = new ConcurrentDictionary<string, int>();
+        // Used as a concurrent set; only keys matter, so value type is byte to minimise footprint.
+        private ConcurrentDictionary<string, byte> _tempIgnoredPaths = new ConcurrentDictionary<string, byte>();
         private ConcurrentDictionary<string, string> _changedPaths = new ConcurrentDictionary<string, string>();
 
         private readonly IRootFolderService _rootFolderService;
@@ -74,7 +75,7 @@ namespace NzbDrone.Core.MediaFiles
             foreach (var path in paths.Where(x => x.IsNotNullOrWhiteSpace()))
             {
                 _logger.Trace($"reporting start of change to {path}");
-                _tempIgnoredPaths.AddOrUpdate(path.CleanFilePathBasic(), 1, (key, value) => value + 1);
+                _tempIgnoredPaths.TryAdd(path.CleanFilePathBasic(), 0);
             }
         }
 
@@ -224,7 +225,7 @@ namespace NzbDrone.Core.MediaFiles
             // Swap out the dictionaries atomically to avoid a TOCTOU window where
             // Watcher_Changed adds an entry after snapshot but before clear.
             var pairs = Interlocked.Exchange(ref _changedPaths, new ConcurrentDictionary<string, string>());
-            var ignored = Interlocked.Exchange(ref _tempIgnoredPaths, new ConcurrentDictionary<string, int>()).Keys.ToArray();
+            var ignored = Interlocked.Exchange(ref _tempIgnoredPaths, new ConcurrentDictionary<string, byte>()).Keys.ToArray();
 
             var toScan = new HashSet<string>();
 
@@ -264,14 +265,15 @@ namespace NzbDrone.Core.MediaFiles
 
             if (toScan.Any())
             {
-                _commandQueueManager.Push(new RescanFoldersCommand(toScan.ToList(), FilterFilesType.Known, true, null));
+                // Known (not Matched) because watcher events can surface brand-new files that
+                // don't yet exist in the database; we need to import them, not just re-evaluate
+                // existing records. Post-refresh rescans use Matched instead.
+                _commandQueueManager.Push(new RescanFoldersCommand(toScan.ToList(), FilterFilesType.Known, false, null));
             }
         }
 
         private bool ShouldIgnoreChange(string cleanPath, string[] ignoredPaths)
         {
-            var cleaned = cleanPath.CleanFilePathBasic();
-
             // Skip partial/backup
             if (cleanPath.EndsWith(".partial~") ||
                 cleanPath.EndsWith(".backup~"))
@@ -280,8 +282,8 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             // only proceed for directories and files with music extensions
-            var extension = Path.GetExtension(cleaned);
-            if (extension.IsNullOrWhiteSpace() && !Directory.Exists(cleaned))
+            var extension = Path.GetExtension(cleanPath);
+            if (extension.IsNullOrWhiteSpace() && !Directory.Exists(cleanPath))
             {
                 return true;
             }
@@ -294,9 +296,9 @@ namespace NzbDrone.Core.MediaFiles
             // If the parent of an ignored path has a change event, ignore that too
             // Note that we can't afford to use the PathEquals or IsParentPath functions because
             // these rely on disk access which is too slow when trying to handle many update events
-            return ignoredPaths.Any(i => i.Equals(cleaned, DiskProviderBase.PathStringComparison) ||
-                                    i.StartsWith(cleaned + Path.DirectorySeparatorChar, DiskProviderBase.PathStringComparison) ||
-                                    Path.GetDirectoryName(i).Equals(cleaned, DiskProviderBase.PathStringComparison));
+            return ignoredPaths.Any(i => i.Equals(cleanPath, DiskProviderBase.PathStringComparison) ||
+                                    i.StartsWith(cleanPath + Path.DirectorySeparatorChar, DiskProviderBase.PathStringComparison) ||
+                                    Path.GetDirectoryName(i)?.Equals(cleanPath, DiskProviderBase.PathStringComparison) == true);
         }
 
         private void DisposeWatcher(FileSystemWatcher watcher, bool removeFromList)

@@ -7,7 +7,9 @@ namespace NzbDrone.Core.MediaFiles.Commands
     {
         public RescanFoldersCommand()
         {
-            // These are the settings used in the scheduled task
+            // These are the settings used in the scheduled task.
+            // WARNING: leaving Folders null causes DiskScanService.Scan to fall back to scanning
+            // ALL root folders. Do not use this constructor unless a full-library scan is intended.
             Filter = FilterFilesType.Known;
             AddNewAuthors = true;
         }
