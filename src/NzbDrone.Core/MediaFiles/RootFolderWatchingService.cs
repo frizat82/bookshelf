@@ -37,16 +37,15 @@ namespace NzbDrone.Core.MediaFiles
         private static readonly char[] PathSeparators = { '/', '\\' };
 
         private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileSystemWatchers = new ConcurrentDictionary<string, FileSystemWatcher>();
-        // Used as a concurrent set; only keys matter, so value type is byte to minimise footprint.
-        private ConcurrentDictionary<string, byte> _tempIgnoredPaths = new ConcurrentDictionary<string, byte>();
-        private ConcurrentDictionary<string, string> _changedPaths = new ConcurrentDictionary<string, string>();
-
         private readonly IRootFolderService _rootFolderService;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly IConfigService _configService;
         private readonly Logger _logger;
-
         private readonly Debouncer _scanDebouncer;
+
+        // Used as a concurrent set; only keys matter, so value type is byte to minimise footprint.
+        private ConcurrentDictionary<string, byte> _tempIgnoredPaths = new ConcurrentDictionary<string, byte>();
+        private ConcurrentDictionary<string, string> _changedPaths = new ConcurrentDictionary<string, string>();
         private bool _watchForChanges;
 
         public RootFolderWatchingService(IRootFolderService rootFolderService,
