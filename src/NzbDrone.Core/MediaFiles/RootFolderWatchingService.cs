@@ -265,10 +265,12 @@ namespace NzbDrone.Core.MediaFiles
 
             if (toScan.Any())
             {
-                // Known (not Matched) because watcher events can surface brand-new files that
-                // don't yet exist in the database; we need to import them, not just re-evaluate
-                // existing records. Post-refresh rescans use Matched instead.
-                _commandQueueManager.Push(new RescanFoldersCommand(toScan.ToList(), FilterFilesType.Known, false, null));
+                // Known (not Matched) because watcher events can surface brand-new files not yet
+                // in the database. addNewAuthors:true so a new author dropped by CWA is picked
+                // up immediately rather than waiting for the 24h scheduled scan. Phantom-author
+                // risk is negligible: ShouldIgnoreChange already filters out non-ebook files, so
+                // a folder with no valid ebook content produces nothing to import.
+                _commandQueueManager.Push(new RescanFoldersCommand(toScan.ToList(), FilterFilesType.Known, true, null));
             }
         }
 
