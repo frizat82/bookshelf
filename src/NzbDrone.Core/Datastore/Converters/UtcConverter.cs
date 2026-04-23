@@ -13,7 +13,7 @@ namespace NzbDrone.Core.Datastore.Converters
 
         public override DateTime Parse(object value)
         {
-            return (DateTime)value;
+            return DateTime.SpecifyKind((DateTime)value, DateTimeKind.Utc);
         }
     }
 }
