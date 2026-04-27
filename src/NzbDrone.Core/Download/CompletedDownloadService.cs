@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
@@ -36,6 +37,7 @@ namespace NzbDrone.Core.Download
         private readonly INotificationFactory _notificationFactory;
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
+        private readonly IBookService _bookService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -47,6 +49,7 @@ namespace NzbDrone.Core.Download
                                         INotificationFactory notificationFactory,
                                         IDiskProvider diskProvider,
                                         IDiskTransferService diskTransferService,
+                                        IBookService bookService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -58,6 +61,7 @@ namespace NzbDrone.Core.Download
             _notificationFactory = notificationFactory;
             _diskProvider = diskProvider;
             _diskTransferService = diskTransferService;
+            _bookService = bookService;
             _logger = logger;
         }
 
@@ -138,6 +142,13 @@ namespace NzbDrone.Core.Download
                         _diskTransferService.TransferFile(file, dest, TransferMode.Move, overwrite: true);
                         _logger.Info("CWA: Moved '{0}' to ingest folder", Path.GetFileName(file));
                     }
+                }
+
+                var bookIds = trackedDownload.RemoteBook?.Books?.Select(b => b.Id).ToList();
+                if (bookIds != null && bookIds.Any())
+                {
+                    _bookService.SetMonitored(bookIds, false);
+                    _logger.Debug("CWA: Unmonitored {0} book(s) after dispatch to ingest folder", bookIds.Count);
                 }
 
                 trackedDownload.State = TrackedDownloadState.Imported;
