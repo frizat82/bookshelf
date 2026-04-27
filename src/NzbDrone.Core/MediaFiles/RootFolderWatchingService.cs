@@ -282,7 +282,7 @@ namespace NzbDrone.Core.MediaFiles
                 return true;
             }
 
-            // only proceed for directories and files with music extensions
+            // only proceed for directories and files with ebook extensions
             var extension = Path.GetExtension(cleanPath);
             if (extension.IsNullOrWhiteSpace() && !Directory.Exists(cleanPath))
             {

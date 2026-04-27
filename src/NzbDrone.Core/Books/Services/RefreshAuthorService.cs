@@ -299,7 +299,6 @@ namespace NzbDrone.Core.Books
 
         private void Rescan(List<int> authorIds, List<Author> authors, bool isNew, CommandTrigger trigger, bool infoUpdated)
         {
-            // Nothing to rescan if no authors were targeted
             if (authorIds == null || !authorIds.Any())
             {
                 return;
