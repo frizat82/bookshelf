@@ -89,6 +89,7 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
         string EnqueueDownload(SlskdDownloadClientSettings settings, string username, string filename, long size);
         List<SlskdTransferResponse> GetTransfers(SlskdDownloadClientSettings settings);
         void RemoveTransfer(SlskdDownloadClientSettings settings, string username, string transferId, bool deleteData);
+        void DeleteAllCompleted(SlskdDownloadClientSettings settings);
         string GetDownloadDirectory(SlskdDownloadClientSettings settings);
     }
 
@@ -131,20 +132,24 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
 
         public void RemoveTransfer(SlskdDownloadClientSettings settings, string username, string transferId, bool deleteData)
         {
-            try
-            {
-                var encoded = Uri.EscapeDataString(username);
-                var suffix = deleteData ? "?deleteFile=true" : string.Empty;
-                var req = BuildRequest(settings, $"/api/v0/transfers/downloads/{encoded}/{transferId}{suffix}");
-                req.Method = System.Net.Http.HttpMethod.Delete;
-                _httpClient.Execute(req);
-            }
-            catch
-            {
-                var req = BuildRequest(settings, "/api/v0/transfers/downloads/all/completed");
-                req.Method = System.Net.Http.HttpMethod.Delete;
-                _httpClient.Execute(req);
-            }
+            var encoded = Uri.EscapeDataString(username);
+
+            // ?remove=true removes the transfer record from slskd history.
+            // ?deleteFile=true additionally deletes the physical file on disk — only pass it
+            // when the file is still in the slskd download directory and we want it cleaned up.
+            // In CWA-first mode the file is already moved to the ingest folder before this is
+            // called, so we never set deleteFile here.
+            var suffix = deleteData ? "?remove=true&deleteFile=true" : "?remove=true";
+            var req = BuildRequest(settings, $"/api/v0/transfers/downloads/{encoded}/{transferId}{suffix}");
+            req.Method = System.Net.Http.HttpMethod.Delete;
+            _httpClient.Execute(req);
+        }
+
+        public void DeleteAllCompleted(SlskdDownloadClientSettings settings)
+        {
+            var req = BuildRequest(settings, "/api/v0/transfers/downloads/all/completed");
+            req.Method = System.Net.Http.HttpMethod.Delete;
+            _httpClient.Execute(req);
         }
 
         public string GetDownloadDirectory(SlskdDownloadClientSettings settings)

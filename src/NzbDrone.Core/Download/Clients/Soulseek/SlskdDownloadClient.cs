@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,10 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
     public class SlskdDownloadClient : DownloadClientBase<SlskdDownloadClientSettings>
     {
         private readonly ISlskdProxy _proxy;
+
+        // Belt-and-suspenders: track removed IDs in memory so GetItems() stops returning
+        // them immediately even before the next slskd API round-trip confirms the deletion.
+        private readonly ConcurrentDictionary<string, byte> _removedTransferIds = new ();
 
         public override string Name => "Soulseek (slskd)";
         public override DownloadProtocol Protocol => DownloadProtocol.Soulseek;
@@ -76,7 +81,7 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                         .Split('/', StringSplitOptions.RemoveEmptyEntries)
                         .LastOrDefault();
 
-                    foreach (var transfer in dir.Files.Where(t => t.Direction == "Download" && IsBookFile(t.Filename)))
+                    foreach (var transfer in dir.Files.Where(t => t.Direction == "Download" && IsBookFile(t.Filename) && !_removedTransferIds.ContainsKey(t.Id)))
                     {
                         var item = new DownloadClientItem
                         {
@@ -127,7 +132,21 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                 return;
             }
 
-            _proxy.RemoveTransfer(Settings, parts[0], parts[1], deleteData);
+            var transferId = parts[1];
+
+            // Mark as removed before the API call so GetItems() stops returning this
+            // transfer immediately, even if slskd silently ignores the delete request.
+            _removedTransferIds.TryAdd(transferId, 0);
+            _logger.Info("slskd: Removed transfer '{0}' (id={1}, deleteFile={2})", item.Title, transferId, deleteData);
+
+            _proxy.RemoveTransfer(Settings, parts[0], transferId, deleteData);
+        }
+
+        public void CleanCompletedTransfers()
+        {
+            _logger.Debug("slskd: Clearing all completed transfers from history");
+            _proxy.DeleteAllCompleted(Settings);
+            _removedTransferIds.Clear();
         }
 
         public override DownloadClientInfo GetStatus()
