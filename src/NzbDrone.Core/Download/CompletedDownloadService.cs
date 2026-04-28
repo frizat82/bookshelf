@@ -12,7 +12,9 @@ using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
+using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.MediaFiles.Events;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Notifications.CalibreWebAutomated;
@@ -38,6 +40,7 @@ namespace NzbDrone.Core.Download
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
         private readonly IBookService _bookService;
+        private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -50,6 +53,7 @@ namespace NzbDrone.Core.Download
                                         IDiskProvider diskProvider,
                                         IDiskTransferService diskTransferService,
                                         IBookService bookService,
+                                        IManageCommandQueue commandQueueManager,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -62,6 +66,7 @@ namespace NzbDrone.Core.Download
             _diskProvider = diskProvider;
             _diskTransferService = diskTransferService;
             _bookService = bookService;
+            _commandQueueManager = commandQueueManager;
             _logger = logger;
         }
 
@@ -144,11 +149,36 @@ namespace NzbDrone.Core.Download
                     }
                 }
 
+                // Unmonitor the books so the import list doesn't re-grab after CWA processes them.
+                // RemoteBook?.Books may be null when the slskd filename fails Readarr's parser, so
+                // fall back to the BookId stored on the grabbed history entry.
                 var bookIds = trackedDownload.RemoteBook?.Books?.Select(b => b.Id).ToList();
+                if (bookIds == null || !bookIds.Any())
+                {
+                    var historyItem = _historyService.MostRecentForDownloadId(trackedDownload.DownloadItem.DownloadId);
+                    if (historyItem?.BookId > 0)
+                    {
+                        bookIds = new List<int> { historyItem.BookId };
+                    }
+                }
+
                 if (bookIds != null && bookIds.Any())
                 {
                     _bookService.SetMonitored(bookIds, false);
-                    _logger.Debug("CWA: Unmonitored {0} book(s) after dispatch to ingest folder", bookIds.Count);
+                    _logger.Info("CWA: Unmonitored {0} book(s) after dispatch to ingest folder", bookIds.Count);
+                }
+                else
+                {
+                    _logger.Warn("CWA: Could not determine book IDs to unmonitor for download '{0}'", trackedDownload.DownloadItem.Title);
+                }
+
+                // Trigger an author-scoped rescan so Calibre's file lands in Readarr's DB quickly,
+                // preventing the import list from re-monitoring and re-grabbing the book.
+                var authorPath = trackedDownload.RemoteBook?.Author?.Path;
+                if (authorPath.IsNotNullOrWhiteSpace())
+                {
+                    _commandQueueManager.Push(new RescanFoldersCommand(
+                        new List<string> { authorPath }, FilterFilesType.Known, false, null));
                 }
 
                 trackedDownload.State = TrackedDownloadState.Imported;
