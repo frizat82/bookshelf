@@ -34,7 +34,10 @@ namespace NzbDrone.Core.HealthCheck.Checks
             // ToDo Enable Master as valid once released
             //Master,
             Develop,
-            Nightly
+            Nightly,
+            Main,
+            Hardcover,
+            Softcover
         }
     }
 }

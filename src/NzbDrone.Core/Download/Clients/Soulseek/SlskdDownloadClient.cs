@@ -202,17 +202,31 @@ namespace NzbDrone.Core.Download.Clients.Soulseek
                 return DownloadItemStatus.Failed;
             }
 
-            if (state.StartsWith("Completed", StringComparison.OrdinalIgnoreCase))
+            // Only "Completed, Succeeded" is a real completion; Rejected/TimedOut/Errored/Cancelled are failures.
+            if (state.StartsWith("Completed, Succeeded", StringComparison.OrdinalIgnoreCase))
             {
                 return DownloadItemStatus.Completed;
             }
 
-            return state switch
+            if (state.StartsWith("Completed", StringComparison.OrdinalIgnoreCase))
             {
-                "Requested" or "Initializing" => DownloadItemStatus.Queued,
-                "InProgress" => DownloadItemStatus.Downloading,
-                _ => DownloadItemStatus.Failed,
-            };
+                return DownloadItemStatus.Failed;
+            }
+
+            // "Queued, Remotely" means waiting in the peer's upload queue — still in progress.
+            if (state.StartsWith("Queued", StringComparison.OrdinalIgnoreCase) ||
+                state.Equals("Requested", StringComparison.OrdinalIgnoreCase) ||
+                state.Equals("Initializing", StringComparison.OrdinalIgnoreCase))
+            {
+                return DownloadItemStatus.Queued;
+            }
+
+            if (state.StartsWith("InProgress", StringComparison.OrdinalIgnoreCase))
+            {
+                return DownloadItemStatus.Downloading;
+            }
+
+            return DownloadItemStatus.Failed;
         }
     }
 }
