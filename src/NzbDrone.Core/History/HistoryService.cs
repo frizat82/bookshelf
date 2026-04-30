@@ -29,6 +29,7 @@ namespace NzbDrone.Core.History
         string FindDownloadId(TrackImportedEvent trackedDownload);
         List<EntityHistory> Since(DateTime date, EntityHistoryEventType? eventType);
         void UpdateMany(IList<EntityHistory> items);
+        void Insert(EntityHistory history);
     }
 
     public class HistoryService : IHistoryService,
@@ -391,6 +392,11 @@ namespace NzbDrone.Core.History
         public void UpdateMany(IList<EntityHistory> items)
         {
             _historyRepository.UpdateMany(items);
+        }
+
+        public void Insert(EntityHistory history)
+        {
+            _historyRepository.Insert(history);
         }
     }
 }

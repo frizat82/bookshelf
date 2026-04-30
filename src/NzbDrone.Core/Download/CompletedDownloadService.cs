@@ -18,6 +18,7 @@ using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Notifications.CalibreWebAutomated;
+using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.Download
 {
@@ -166,6 +167,26 @@ namespace NzbDrone.Core.Download
                 {
                     _bookService.SetMonitored(bookIds, false);
                     _logger.Info("CWA: Unmonitored {0} book(s) after dispatch to ingest folder", bookIds.Count);
+
+                    var grabbedHistoryItem = _historyService.MostRecentForDownloadId(trackedDownload.DownloadItem.DownloadId);
+                    foreach (var bookId in bookIds)
+                    {
+                        var history = new EntityHistory
+                        {
+                            EventType = EntityHistoryEventType.DispatchedToCwa,
+                            Date = DateTime.UtcNow,
+                            Quality = grabbedHistoryItem?.Quality ?? trackedDownload.RemoteBook?.ParsedBookInfo?.Quality ?? new QualityModel(),
+                            SourceTitle = trackedDownload.DownloadItem.Title,
+                            AuthorId = grabbedHistoryItem?.AuthorId ?? trackedDownload.RemoteBook?.Author?.Id ?? 0,
+                            BookId = bookId,
+                            DownloadId = trackedDownload.DownloadItem.DownloadId
+                        };
+
+                        history.Data.Add("DownloadClient", trackedDownload.DownloadItem.DownloadClientInfo.Type);
+                        history.Data.Add("DownloadClientName", trackedDownload.DownloadItem.DownloadClientInfo.Name);
+                        history.Data.Add("IngestFolder", cwaIngestFolder);
+                        _historyService.Insert(history);
+                    }
                 }
                 else
                 {

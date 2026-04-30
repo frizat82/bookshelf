@@ -43,6 +43,7 @@ namespace NzbDrone.Core.History
         BookImportIncomplete = 7,
         DownloadImported = 8,
         BookFileRetagged = 9,
-        DownloadIgnored = 10
+        DownloadIgnored = 10,
+        DispatchedToCwa = 11
     }
 }
