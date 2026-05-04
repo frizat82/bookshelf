@@ -7,8 +7,11 @@ using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.History;
 using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.IndexerSearch;
+using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
@@ -30,6 +33,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IEditionService _editionService;
         private readonly IAddAuthorService _addAuthorService;
         private readonly IAddBookService _addBookService;
+        private readonly IHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
@@ -45,6 +49,7 @@ namespace NzbDrone.Core.ImportLists
                                      IEditionService editionService,
                                      IAddAuthorService addAuthorService,
                                      IAddBookService addBookService,
+                                     IHistoryService historyService,
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger)
@@ -60,6 +65,7 @@ namespace NzbDrone.Core.ImportLists
             _editionService = editionService;
             _addAuthorService = addAuthorService;
             _addBookService = addBookService;
+            _historyService = historyService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
             _logger = logger;
@@ -249,6 +255,19 @@ namespace NzbDrone.Core.ImportLists
 
                 if (importList.ShouldMonitorExisting && importList.ShouldMonitor != ImportListMonitorType.None)
                 {
+                    if (_historyService.GetByBook(existingBook.Id, EntityHistoryEventType.DispatchedToCwa).Any())
+                    {
+                        _logger.Debug("{0} [{1}] Book was dispatched to CWA; rescanning author folder to pick up Calibre file instead of re-monitoring", report.EditionGoodreadsId, report.Book);
+                        var authorPath = existingBook.Author.Value.Path;
+                        if (authorPath.IsNotNullOrWhiteSpace())
+                        {
+                            _commandQueueManager.Push(new RescanFoldersCommand(
+                                new List<string> { authorPath }, FilterFilesType.Known, false, null));
+                        }
+
+                        return;
+                    }
+
                     if (!existingBook.Monitored)
                     {
                         _bookService.SetBookMonitored(existingBook.Id, true);
