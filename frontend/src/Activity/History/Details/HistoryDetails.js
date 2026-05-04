@@ -473,6 +473,43 @@ function HistoryDetails(props) {
     );
   }
 
+  if (eventType === 'dispatchedToCwa') {
+    const {
+      downloadClient,
+      downloadClientName,
+      ingestFolder
+    } = data;
+
+    const clientName = downloadClientName ?? downloadClient;
+
+    return (
+      <DescriptionList>
+        <DescriptionListItem
+          descriptionClassName={styles.description}
+          title={translate('Name')}
+          data={sourceTitle}
+        />
+
+        {
+          !!clientName &&
+            <DescriptionListItem
+              title={translate('DownloadClient')}
+              data={clientName}
+            />
+        }
+
+        {
+          !!ingestFolder &&
+            <DescriptionListItem
+              descriptionClassName={styles.description}
+              title="Ingest Folder"
+              data={ingestFolder}
+            />
+        }
+      </DescriptionList>
+    );
+  }
+
   return (
     <DescriptionList>
       <DescriptionListItem

@@ -25,6 +25,8 @@ function getIconName(eventType) {
       return icons.DOWNLOADED;
     case 'downloadIgnored':
       return icons.IGNORE;
+    case 'dispatchedToCwa':
+      return icons.FILEIMPORT;
     default:
       return icons.UNKNOWN;
   }
@@ -61,6 +63,8 @@ function getTooltip(eventType, data) {
       return 'Files downloaded but not all could be imported';
     case 'downloadIgnored':
       return 'Book Download Ignored';
+    case 'dispatchedToCwa':
+      return 'Book dispatched to Calibre-Web Automated ingest folder';
     default:
       return 'Unknown event';
   }
