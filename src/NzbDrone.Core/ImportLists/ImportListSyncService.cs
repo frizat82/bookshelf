@@ -101,6 +101,7 @@ namespace NzbDrone.Core.ImportLists
             var processed = new List<Book>();
             var authorsToAdd = new List<Author>();
             var booksToAdd = new List<Book>();
+            var cwaRescanPaths = new HashSet<string>();
 
             if (items.Count == 0)
             {
@@ -130,7 +131,7 @@ namespace NzbDrone.Core.ImportLists
                         MapBookReport(report);
                     }
 
-                    ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd);
+                    ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd, cwaRescanPaths);
                 }
                 else if (report.Author.IsNotNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNotNullOrWhiteSpace())
                 {
@@ -154,6 +155,12 @@ namespace NzbDrone.Core.ImportLists
             if (toRefresh.Any())
             {
                 _commandQueueManager.Push(new BulkRefreshAuthorCommand(toRefresh, true));
+            }
+
+            if (cwaRescanPaths.Any())
+            {
+                _commandQueueManager.Push(new RescanFoldersCommand(
+                    cwaRescanPaths.ToList(), FilterFilesType.Known, false, null));
             }
 
             return processed;
@@ -226,7 +233,7 @@ namespace NzbDrone.Core.ImportLists
             }
         }
 
-        private void ProcessBookReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Book> booksToAdd, List<Author> authorsToAdd)
+        private void ProcessBookReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Book> booksToAdd, List<Author> authorsToAdd, HashSet<string> cwaRescanPaths)
         {
             // Check to see if book in DB
             var existingBook = _bookService.FindById(report.BookGoodreadsId);
@@ -257,12 +264,11 @@ namespace NzbDrone.Core.ImportLists
                 {
                     if (_historyService.GetByBook(existingBook.Id, EntityHistoryEventType.DispatchedToCwa).Any())
                     {
-                        _logger.Debug("{0} [{1}] Book was dispatched to CWA; rescanning author folder to pick up Calibre file instead of re-monitoring", report.EditionGoodreadsId, report.Book);
+                        _logger.Debug("{0} [{1}] Book was dispatched to CWA; queuing author folder rescan to pick up Calibre file instead of re-monitoring", report.EditionGoodreadsId, report.Book);
                         var authorPath = existingBook.Author.Value.Path;
                         if (authorPath.IsNotNullOrWhiteSpace())
                         {
-                            _commandQueueManager.Push(new RescanFoldersCommand(
-                                new List<string> { authorPath }, FilterFilesType.Known, false, null));
+                            cwaRescanPaths.Add(authorPath);
                         }
 
                         return;
