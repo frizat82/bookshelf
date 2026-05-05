@@ -173,14 +173,12 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 return null;
             }
 
-            Logger.Trace("Hardcover: Parsed '{0}' by '{1}' (bookId={2}, authorId={3})", title, author, bookId, authorId);
+            Logger.Trace("Hardcover: Parsed '{0}' by '{1}' (hardcoverBookId={2}, hardcoverAuthorId={3})", title, author, bookId, authorId);
 
             return new ImportListItemInfo
             {
                 Book = title,
-                Author = author,
-                AuthorGoodreadsId = authorId,
-                BookGoodreadsId = bookId
+                Author = author
             };
         }
 
