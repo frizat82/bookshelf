@@ -34,6 +34,10 @@ function getTitle(eventType) {
       return 'Book File Tags Updated';
     case 'bookImportIncomplete':
       return 'Book Import Incomplete';
+    case 'downloadIgnored':
+      return 'Download Ignored';
+    case 'dispatchedToCwa':
+      return 'Dispatched to CWA';
     default:
       return 'Unknown';
   }
