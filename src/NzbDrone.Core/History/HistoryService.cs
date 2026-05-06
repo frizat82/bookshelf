@@ -213,7 +213,11 @@ namespace NzbDrone.Core.History
         {
             if (!message.NewDownload)
             {
-                return;
+                var cwaHistory = _historyRepository.GetByBook(message.BookInfo.Book.Id, EntityHistoryEventType.DispatchedToCwa);
+                if (!cwaHistory.Any())
+                {
+                    return;
+                }
             }
 
             var downloadId = message.DownloadId;
